@@ -11,17 +11,17 @@ builds:
       - windows
       - darwin
 
-archive:
-  format: tgz
-  format_overrides:
-    - goos: windows
-      format: zip
-  replacements:
-    darwin: macosx
-    386: i386
-    amd64: x86_64
-  files:
-      - README.md
+archives:
+  - format: tgz
+    format_overrides:
+      - goos: windows
+        format: zip
+    replacements:
+      darwin: macosx
+      386: i386
+      amd64: x86_64
+    files:
+        - README.md
 
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
