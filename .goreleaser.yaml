@@ -39,4 +39,4 @@ release:
   disable: false
   draft: false
   prerelease: false
-  name_template: '{{ .ProjectName }} {{ .Tag }}''
+  name_template: '{{ .ProjectName }} {{ .Tag }}'
