@@ -1,0 +1,36 @@
+before:
+  hooks:
+    - go mod tidy
+    # - go generate ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+
+archive:
+  format: tgz
+  format_overrides:
+    - goos: windows
+      format: zip
+  replacements:
+    darwin: macosx
+    386: i386
+    amd64: x86_64
+  files:
+      - README.md
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - Merge pull request
+      - Merge branch
+      - Merge tag
+      - Releasing

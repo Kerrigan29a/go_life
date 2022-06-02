@@ -5,7 +5,7 @@ test:
 	go test
 
 release: test
-	git tag -a $(VERSION) -m "Release version $(VERSION)"
+	git tag -a $(VERSION) -m "Releasing version $(VERSION)"
 	git push origin HEAD
 	git push origin tag $(VERSION)
 	curl https://proxy.golang.org/$(MODULE)/@v/$(VERSION).info
