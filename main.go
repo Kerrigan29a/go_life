@@ -4,12 +4,14 @@ package main
 // Initial version: https://go.dev/doc/play/life.go
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -134,55 +136,38 @@ func next(l *Life, screen tcell.Screen, epoch uint) uint {
 	return epoch + 1
 }
 
-func parseDigits(name, s string) ([]uint, error) {
+func parseDigits(name, s string) []uint {
 	var result []uint
 	for _, r := range s {
 		if !unicode.IsDigit(r) || (r < '0' || r > '8') {
-			return nil, fmt.Errorf("invalid %s rule, use only [0-8] digits: %s", name, s)
+			panic(fmt.Errorf("invalid %s rule, use only [0-8] digits: %s", name, s))
 		}
 		result = append(result, uint(r-'0'))
 	}
 	slices.Sort(result)
 
-	return result, nil
+	return result
 }
 
-func parseBS(s string) ([]uint, []uint, error) {
+func parseBS(s string) ([]uint, []uint) {
 	re := regexp.MustCompile(`(?i)B([0-8]+)/S([0-8]*)`)
 	m := re.FindStringSubmatch(s)
 	if m == nil {
-		return nil, nil, fmt.Errorf("invalid B/S rule: %s", s)
+		panic(fmt.Errorf("invalid B/S rule: %s", s))
 	}
-	birth, err := parseDigits("birth", m[1])
-	if err != nil {
-		return nil, nil, err
-	}
-
-	survival, err := parseDigits("survival", m[2])
-	if err != nil {
-		return nil, nil, err
-	}
-	return birth, survival, nil
+	return parseDigits("birth", m[1]), parseDigits("survival", m[2])
 }
 
-func parseSB(s string) ([]uint, []uint, error) {
+func parseSB(s string) ([]uint, []uint) {
 	re := regexp.MustCompile(`([0-8]*)/([0-8]+)`)
 	m := re.FindStringSubmatch(s)
 	if m == nil {
-		return nil, nil, fmt.Errorf("invalid S/B rule: %s", s)
+		panic(fmt.Errorf("invalid S/B rule: %s", s))
 	}
-	survival, err := parseDigits("survival", m[1])
-	if err != nil {
-		return nil, nil, err
-	}
-	birth, err := parseDigits("birth", m[2])
-	if err != nil {
-		return nil, nil, err
-	}
-	return birth, survival, nil
+	return parseDigits("survival", m[1]), parseDigits("birth", m[2])
 }
 
-func parseArgs() (birth, survival []uint, density float64, err error) {
+func parseArgs() (birth, survival []uint, density float64) {
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(), "")
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
@@ -213,27 +198,37 @@ func parseArgs() (birth, survival []uint, density float64, err error) {
 	flag.Parse()
 
 	if bs != bsDefault {
-		birth, survival, err = parseBS(bs)
-		if err != nil {
-			return nil, nil, 0, err
-		}
+		birth, survival = parseBS(bs)
 	} else {
-		birth, survival, err = parseSB(sb)
-		if err != nil {
-			return nil, nil, 0, err
-		}
+		survival, birth = parseSB(sb)
 	}
 	if birth == nil {
 		panic("unknown parsing state")
 	}
-	return birth, survival, density, nil
+	return birth, survival, density
+}
+
+func handleErrors() {
+	// This code allows us to propagate internal errors without having to add error checks everywhere throughout the
+	// code. This is only possible because the code does not update shared state and does not manipulate locks.
+	if r := recover(); r != nil {
+		var rerr runtime.Error
+		if err, ok := r.(error); ok && !errors.As(err, &rerr) {
+			log.Fatalf("%+v", err)
+		} else {
+			panic(r)
+		}
+	}
 }
 
 func main() {
-	birth, survival, density, err := parseArgs()
-	if err != nil {
-		log.Fatalf("%+v", err)
-	}
+	// Idea from: https://www.youtube.com/watch?v=c78U0MZ4b_c
+	// This is also used in:
+	//     - <GOLANG_CODEBASE>/src/encoding/json/encode.go
+	//     - https://github.com/golang/go/blob/865911424d509184d95d3f9fc6a8301927117fdc/src/encoding/json/encode.go#L322
+	defer handleErrors()
+
+	birth, survival, density := parseArgs()
 
 	// Initialize screen
 	screen, err := tcell.NewScreen()
