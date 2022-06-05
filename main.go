@@ -219,6 +219,7 @@ func handleErrors() {
 			panic(r)
 		}
 	}
+	os.Exit(0)
 }
 
 func main() {
@@ -238,6 +239,7 @@ func main() {
 	if err := screen.Init(); err != nil {
 		log.Fatalf("%+v", err)
 	}
+	defer screen.Fini()
 	screen.SetStyle(tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset))
 	screen.EnableMouse()
 	screen.DisablePaste()
@@ -308,6 +310,4 @@ loop:
 			epoch = next(l, screen, epoch)
 		}
 	}
-	screen.Fini()
-	os.Exit(0)
 }
